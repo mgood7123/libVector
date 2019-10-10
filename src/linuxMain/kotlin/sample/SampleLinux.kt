@@ -1,7 +1,5 @@
 package sample
 
-import kotlin.native.internal.NumberConverter
-
 // Mathematical Terms
 
 /*
