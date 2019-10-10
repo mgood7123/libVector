@@ -957,54 +957,84 @@ open class Math {
  * (and a vector space, and anything that may also be related) works
  */
 
-open class VectorCore: Math {
+open class VectorCoreInternal<T>: Math {
     // constructors
     constructor() : super() {
         this.vector = mutableListOf()
     }
-    constructor(dimension: Int) : super() {
+    /**
+     * constructs an **N**-dimensional vector
+     */
+    constructor(N: Int) : super() {
         this.vector = mutableListOf()
-        this.resize(dimension)
+        this.resize(N)
     }
     // variables
-    protected val vector: MutableList<Number?>
-    var dimensions: Int
+    private val vector: MutableList<T?>
+    open var dimensions: Int
         get() = vector.size
         set(value: Int) = resize(value)
     // vector resizing operations
-    fun resize(size: Int) = when {
+    open fun resize(size: Int) = when {
         size == 0 -> vector.clear()
         size > vector.size -> while(size > vector.size) vector.add(null)
         else -> while(size < vector.size) vector.removeAt(vector.lastIndex)
     }
-    fun addDimension(default: Number) = vector.add(default)
-    fun removeDimension(dimension: Int) = vector.removeAt(dimension)
+    open fun addDimension(default: T) = vector.add(default)
+    open fun removeDimension(dimension: Int) = vector.removeAt(dimension)
+    open fun addAll(vectorCore: VectorCoreInternal<T>) = vector.addAll(vectorCore.vector)
     // vector indexing
-    operator fun get(index: Int) = vector.get(index)
-    fun getOrZero(index: Int): Number = if (get(index) == null) 0 else get(index)!!
-    operator fun set(index: Int, value: Number) {
+    open operator fun get(index: Int) = vector.get(index)
+    open operator fun set(index: Int, value: T) {
         vector[index] = value
     }
-    fun clone() = VectorCore().also { it.vector.addAll(vector) }
+    open fun clone() = VectorCoreInternal<T>().also { it.addAll(this) }
     override fun toString(): String = vector.toString()
-    fun info(): String {
+    open fun info(): String {
         return "dimensions: $dimensions\n" +
                 "size: ${vector.size}\n" +
                 "vector: $vector\n"
     }
-    fun iterator(): Iterator<Number?> = vector.iterator()
-    fun forEach(action: (Item: Number?) -> Unit) = vector.forEach {
+    open fun iterator(): Iterator<T?> = vector.iterator()
+    open fun forEach(action: (Item: T?) -> Unit) = vector.forEach {
         action(it)
     }
-    fun forEachIndex(action: (index: Int) -> Unit) = vector.forEachIndexed { index, type ->
+    open fun forEachIndex(action: (index: Int) -> Unit) = vector.forEachIndexed { index, type ->
         action(index)
     }
 }
 
+fun VectorCoreInternal<Number>.toVectorCore() =
+    if (this is VectorCore)
+        this
+    else
+        VectorCore().also { it.addAll(this) }
+
+open class VectorCore: VectorCoreInternal<Number> {
+    // constructors
+    constructor() : super()
+    /**
+     * constructs an **N**-dimensional vector
+     */
+    constructor(N: Int) : super(N)
+    override fun clone() = VectorCore().also { it.addAll(this) }
+    open fun getOrZero(index: Int) = if (get(index) == null) 0 else get(index)!!
+}
+
+fun VectorCore.toVectorBase() =
+    if (this is VectorBase)
+        this
+    else
+        VectorBase().also { it.addAll(this) }
+
 open class VectorBase: VectorCore {
     // constructors
     constructor() : super()
-    constructor(dimension: Int) : super(dimension)
+    /**
+     * constructs an **N**-dimensional vector
+     */
+    constructor(N: Int) : super(N)
+    override fun clone() = VectorBase().also { it.addAll(this) }
 
     /**
      * perform **action** on each element of two vectors respectively as a pair
@@ -1033,18 +1063,18 @@ open class VectorBase: VectorCore {
      * @see elementWiseMultiplication
      * @see elementWiseDivision
      */
-    fun elementWiseOperation(vector: VectorCore, action: (result: VectorCore, lhs: Number, rhs: Number) -> Unit): VectorBase {
+    open fun elementWiseOperation(vectorCore: VectorCore, action: (result: VectorCore, lhs: Number, rhs: Number) -> Unit): VectorBase {
         val v1 = VectorCore()
         val vA = clone()
-        val vB = vector.clone()
-        if (dimensions != vector.dimensions) {
-            vA.resize(if (dimensions > vector.dimensions) dimensions else vector.dimensions)
-            vB.resize(if (dimensions > vector.dimensions) dimensions else vector.dimensions)
+        val vB = vectorCore.clone()
+        if (dimensions != vectorCore.dimensions) {
+            vA.resize(if (dimensions > vectorCore.dimensions) dimensions else vectorCore.dimensions)
+            vB.resize(if (dimensions > vectorCore.dimensions) dimensions else vectorCore.dimensions)
         }
         vA.forEachIndex {
             action(v1, vA.getOrZero(it), vB.getOrZero(it))
         }
-        return v1 as VectorBase
+        return v1.toVectorBase()
     }
 
     /**
@@ -1054,7 +1084,7 @@ open class VectorBase: VectorCore {
      * @see elementWiseMultiplication
      * @see elementWiseDivision
      */
-    fun elementWiseAddition(vector: VectorCore) = elementWiseOperation(vector) { result, lhs, rhs ->
+    open fun elementWiseAddition(vectorCore: VectorCore) = elementWiseOperation(vectorCore) { result, lhs, rhs ->
         result.addDimension(addition(lhs, rhs))
     }
 
@@ -1065,7 +1095,7 @@ open class VectorBase: VectorCore {
      * @see elementWiseMultiplication
      * @see elementWiseDivision
      */
-    fun elementWiseSubtraction(vector: VectorCore) = elementWiseOperation(vector) { result, lhs, rhs ->
+    open fun elementWiseSubtraction(vectorCore: VectorCore) = elementWiseOperation(vectorCore) { result, lhs, rhs ->
         result.addDimension(subtraction(lhs, rhs))
     }
 
@@ -1076,7 +1106,7 @@ open class VectorBase: VectorCore {
      * @see elementWiseSubtraction
      * @see elementWiseDivision
      */
-    fun elementWiseMultiplication(vector: VectorCore) = elementWiseOperation(vector) { result, lhs, rhs ->
+    open fun elementWiseMultiplication(vectorCore: VectorCore) = elementWiseOperation(vectorCore) { result, lhs, rhs ->
         result.addDimension(multiplication(lhs, rhs))
     }
 
@@ -1087,11 +1117,11 @@ open class VectorBase: VectorCore {
      * @see elementWiseSubtraction
      * @see elementWiseMultiplication
      */
-    fun elementWiseDivision(vector: VectorCore) = elementWiseOperation(vector) { result, lhs, rhs ->
+    open fun elementWiseDivision(vectorCore: VectorCore) = elementWiseOperation(vectorCore) { result, lhs, rhs ->
         result.addDimension(division(lhs, rhs))
     }
 
-    fun sum(): Number {
+    open fun sum(): Number {
         var sum: Number = 0.toByte()
         forEachIndex {
             sum = addition(sum, getOrZero(it))
@@ -1102,24 +1132,33 @@ open class VectorBase: VectorCore {
     /**
      * performs [element-wise multiplication][elementWiseMultiplication] on **this vector** and the **input vector**
      */
-    fun hadamardProduct(vector: VectorCore) = elementWiseMultiplication(vector)
+    open fun hadamardProduct(vectorCore: VectorCore) = elementWiseMultiplication(vectorCore)
 
     /**
      * scales a vector by a factor of **number**
      */
-    fun scale(number: Int) = elementWiseOperation(this) { result, lhs, rhs ->
+    open fun scale(number: Int) = elementWiseOperation(this) { result, lhs, rhs ->
         result.addDimension(number)
     }.hadamardProduct(this)
 
     /**
      * performs vector addition
      */
-    fun vectorAddition(vector: VectorCore) = elementWiseAddition(vector)
+    open fun vectorAddition(vectorCore: VectorCore) = elementWiseAddition(vectorCore)
 
     /**
      * scales a vector by a factor of **number**
      */
-    fun scalarMultiplication(number: Int) = scale(number)
+    open fun scalarMultiplication(number: Int) = scale(number)
+
+    /**
+     * performs [vector addition][vectorAddition]
+     */
+    open operator fun plus(vectorCore: VectorCore) = vectorAddition(vectorCore)
+    /**
+     * performs [scalar multiplication][scalarMultiplication]
+     */
+    open operator fun times(number: Int) = scalarMultiplication(number)
 
     /**
      * Linear Combination is the addition of scaled vectors
@@ -1133,7 +1172,7 @@ open class VectorBase: VectorCore {
      * // V3 = vector(10,20,30)
      * ```
      */
-    fun linearCombination(number: Int) = scale(number)
+    open fun linearCombination(number: Int) = scale(number)
 
 
     /**
@@ -1141,79 +1180,36 @@ open class VectorBase: VectorCore {
      *
      * example: ***`[1, 2] · [1, 2] -> [1*1, 2*2] -> [1, 4] -> 1 + 4 -> 5`***
      */
-    fun dotProduct(vector: VectorCore) = hadamardProduct(vector).sum()
+    open fun dotProduct(vectorCore: VectorCore) = hadamardProduct(vectorCore).sum()
 
     // synonyms for dotProduct
 
     /**
      * see [dotProduct]
      */
-    fun scalarProduct(vector: VectorCore) = dotProduct(vector)
+    open fun scalarProduct(vectorCore: VectorCore) = dotProduct(vectorCore)
 
     /**
      * see [dotProduct]
      */
-    infix fun `·`(vector: VectorCore) = scalarProduct(vector)
+    open infix fun `·`(vectorCore: VectorCore) = scalarProduct(vectorCore)
 
 }
 
-open class Vector : VectorBase {
-    constructor() : super()
-    constructor(dimension: Int) : super(dimension)
+typealias Vector = VectorBase
 
-    /**
-     * performs [vector addition][vectorAddition]
-     */
-    operator fun plus(vector: Vector) = vectorAddition(vector) as Vector
-    /**
-     * performs [scalar multiplication][scalarMultiplication]
-     */
-    operator fun times(number: Int) = scalarMultiplication(number) as Vector
-}
-
-open class VectorSpaceCore: Math {
+open class VectorSpaceCore: VectorCoreInternal<VectorCore> {
     // constructors
-    constructor() : super() {
-        this.vector = mutableListOf()
-    }
-    constructor(dimension: Int) : super() {
-        this.vector = mutableListOf()
-        this.resize(dimension)
-    }
-    // variables
-    protected val vector: MutableList<Vector?>
-    // TODO: correct this to adhere to the rules of a Vector Space
-    var dimensions: Int
-        get() = vector.size
-        set(value: Int) = resize(value)
-    // vector resizing operations
-    fun resize(size: Int) = when {
-        size == 0 -> vector.clear()
-        size > vector.size -> while(size > vector.size) vector.add(null)
-        else -> while(size < vector.size) vector.removeAt(vector.lastIndex)
-    }
-    fun addDimension(default: Vector) = vector.add(default)
-    fun removeDimension(dimension: Int) = vector.removeAt(dimension)
-    // vector indexing
-    operator fun get(index: Int) = vector.get(index)
-//    protected fun getOrZero(index: Int): Number = if (get(index) == null) 0 else get(index)!!
-    operator fun set(index: Int, value: Vector?) {
-        vector[index] = value
-    }
-    fun clone() = VectorSpace().also { it.vector.addAll(vector) }
-    override fun toString(): String {
-        return "dimensions: $dimensions\n" +
-                "size: ${vector.size}\n" +
-                "vector: $vector\n"
-    }
-    fun iterator(): Iterator<Vector?> = vector.iterator()
-    fun forEach(action: (Item: Vector?) -> Unit) = vector.forEach {
-        action(it)
-    }
-    fun forEachIndex(action: (index: Int) -> Unit) = vector.forEachIndexed { index, type ->
-        action(index)
-    }
+    constructor() : super()
+    /**
+     * constructs an **N**-dimensional vector
+     */
+    constructor(N: Int) : super(N)
+    override fun clone() = VectorSpaceCore().also { it.addAll(this) }
+    open fun getOrZero(index: Int) = if (get(index) == null) 0 else get(index)!!
 }
+
+// TODO: integrate with VectorBase somehow
 
 open class VectorSpaceBase: VectorSpaceCore {
     // constructors
@@ -1221,7 +1217,7 @@ open class VectorSpaceBase: VectorSpaceCore {
     constructor(dimension: Int) : super(dimension)
 
     // base operations
-    fun operation(vector: VectorSpace, action: (result: Vector, lhs: Number, rhs: Number) -> Unit): VectorSpace {
+    fun operation(vector: VectorSpace, action: (result: VectorCore, lhs: Number, rhs: Number) -> Unit): VectorSpace {
         val v1 = VectorSpace()
         val vA = clone()
         val vB = vector.clone()
@@ -1230,14 +1226,14 @@ open class VectorSpaceBase: VectorSpaceCore {
             vB.resize(if (dimensions > vector.dimensions) dimensions else vector.dimensions)
         }
         vA.forEachIndex {
-            v1.addDimension(vA[it]!!.elementWiseOperation(vB[it]!!, action))
+            v1.addDimension(vA[it]!!.toVectorBase().elementWiseOperation(vB[it]!!, action))
         }
         return v1
     }
     fun sum(): Number {
         var sum: Number = 0.toByte()
         forEachIndex {
-            sum = addition(sum, get(it)?.sum() ?: 0)
+            sum = addition(sum, get(it)?.toVectorBase()?.sum() ?: 0)
         }
         return sum
     }
