@@ -1,5 +1,8 @@
 package sample
 
+import VectorAlgorithms
+import VectorSpaceAlgorithms
+
 // Mathematical Terms
 
 /*
@@ -1010,13 +1013,7 @@ open class VectorCoreInternal<T>: Math {
      */
     open var AlgorithmHook: Any? = null
 
-    open fun getOrZero(index: Int): Any = if (get(index) == null) 0 else get(index)!! as Any
-    open operator fun plus(vectorCoreInternal: VectorCoreInternal<T>): VectorCoreInternal<T> {
-        NotImplementedError(
-            "this must be implemented by the parent class"
-        )
-        return this
-    }
+    open fun getOrZero(index: Int): T = if (get(index) == null) 0 as T else get(index)!!
 }
 
 fun VectorCoreInternal<Number>.toVectorCore() =
@@ -1036,170 +1033,8 @@ open class VectorCore: VectorCoreInternal<Number> {
     constructor(N: Int) : super(N)
     override fun clone() = VectorCore().also { it.addAll(this) }
     override var AlgorithmHook: Any? = VectorAlgorithms(this)
-    val Algorithm = AlgorithmHook as VectorAlgorithms<Number>
-    override fun plus(vectorCoreInternal: VectorCoreInternal<Number>): VectorCoreInternal<Number> = Algorithm + vectorCoreInternal
-}
-
-open class VectorAlgorithms<T>(val parent: VectorCoreInternal<T>) {
-    /**
-     * perform **action** on each element of two vectors respectively as a pair
-     *
-     * *example:*
-     *
-     * ```
-     * val A = Vector()
-     * A.addDimension(1)
-     * A.addDimension(2)
-     * A.addDimension(3)
-     * val B = Vector()
-     * B.addDimension(2)
-     * B.addDimension(2)
-     * B.addDimension(2)
-     * val C = A.elementWiseOperation(B) { result, lhs, rhs ->
-     *     result.addDimension(multiplication(lhs, rhs))
-     * }
-     *
-     * [1]   [2]   [1*2]   [2]
-     * [2] * [2] = [2*2] = [4]
-     * [3]   [2]   [3*2]   [6]
-     * ```
-     * @see elementWiseAddition
-     * @see elementWiseSubtraction
-     * @see elementWiseMultiplication
-     * @see elementWiseDivision
-     */
-    open fun <T> elementWiseOperation(vectorCoreInternal: VectorCoreInternal<T>, action: (result: VectorCoreInternal<T>, lhs: Number, rhs: Number) -> Unit): VectorCoreInternal<T> {
-        val v1 = VectorCoreInternal<T>()
-        v1.AlgorithmHook = vectorCoreInternal.AlgorithmHook
-        val vA = parent.clone()
-        val vB = vectorCoreInternal.clone()
-        if (parent.dimensions != vectorCoreInternal.dimensions) {
-            vA.resize(if (parent.dimensions > vectorCoreInternal.dimensions) parent.dimensions else vectorCoreInternal.dimensions)
-            vB.resize(if (parent.dimensions > vectorCoreInternal.dimensions) parent.dimensions else vectorCoreInternal.dimensions)
-        }
-        vA.forEachIndex {
-            action(v1, vA.getOrZero(it) as Number, vB.getOrZero(it) as Number)
-        }
-        return v1
-    }
-
-    /**
-     * perform **addition** on each element of two vectors respectively as a pair
-     * @see elementWiseOperation
-     * @see elementWiseSubtraction
-     * @see elementWiseMultiplication
-     * @see elementWiseDivision
-     */
-    open fun elementWiseAddition(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseOperation(vectorCoreInternal) { result, lhs, rhs ->
-        result.addDimension(parent.addition(lhs, rhs) as T)
-    }
-
-    /**
-     * perform **subtraction** on each element of two vectors respectively as a pair
-     * @see elementWiseOperation
-     * @see elementWiseAddition
-     * @see elementWiseMultiplication
-     * @see elementWiseDivision
-     */
-    open fun elementWiseSubtraction(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseOperation(vectorCoreInternal) { result, lhs, rhs ->
-        result.addDimension(parent.subtraction(lhs, rhs) as T)
-    }
-
-    /**
-     * perform **multiplication** on each element of two vectors respectively as a pair
-     * @see elementWiseOperation
-     * @see elementWiseAddition
-     * @see elementWiseSubtraction
-     * @see elementWiseDivision
-     */
-    open fun elementWiseMultiplication(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseOperation(vectorCoreInternal) { result, lhs, rhs ->
-        result.addDimension(parent.multiplication(lhs, rhs) as T)
-    }
-
-    /**
-     * perform **division** on each element of two vectors respectively as a pair
-     * @see elementWiseOperation
-     * @see elementWiseAddition
-     * @see elementWiseSubtraction
-     * @see elementWiseMultiplication
-     */
-    open fun elementWiseDivision(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseOperation(vectorCoreInternal) { result, lhs, rhs ->
-        result.addDimension(parent.division(lhs, rhs) as T)
-    }
-
-    open fun sum(): Number {
-        var sum: Number = 0.toByte()
-        parent.forEachIndex {
-            sum = parent.addition(sum, parent.getOrZero(it) as Number)
-        }
-        return sum
-    }
-
-    /**
-     * performs [element-wise multiplication][elementWiseMultiplication] on **this vector** and the **input vector**
-     */
-    open fun hadamardProduct(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseMultiplication(vectorCoreInternal)
-
-    /**
-     * scales a vector by a factor of **number**
-     */
-    open fun scale(number: Int) = (elementWiseOperation(parent) { result, lhs, rhs ->
-        result.addDimension(number as T)
-    }.AlgorithmHook as VectorAlgorithms<T>).hadamardProduct(parent)
-
-    /**
-     * performs vector addition
-     */
-    open fun vectorAddition(vectorCoreInternal: VectorCoreInternal<T>) = elementWiseAddition(vectorCoreInternal)
-
-    /**
-     * scales a vector by a factor of **number**
-     */
-    open fun scalarMultiplication(number: Int) = scale(number)
-
-    /**
-     * performs [vector addition][vectorAddition]
-     */
-    open operator fun plus(vectorCoreInternal: VectorCoreInternal<T>) = vectorAddition(vectorCoreInternal)
-    /**
-     * performs [scalar multiplication][scalarMultiplication]
-     */
-    open operator fun times(number: Int) = scalarMultiplication(number)
-
-    /**
-     * Linear Combination is the addition of scaled vectors
-     *
-     * **example**: linear combination: 5V1 + 5V2
-     * ```
-     * V1 = vector(1,2,3)
-     * V2 = vector(1,2,3)
-     * V3 = V1.scale(5) + V2.scale(5)
-     * // V3 is equivilant to
-     * // V3 = vector(10,20,30)
-     * ```
-     */
-    open fun linearCombination(number: Int) = scale(number)
-
-
-    /**
-     * returns the **sum** of the [hadamardProduct]
-     *
-     * example: ***`[1, 2] · [1, 2] -> [1*1, 2*2] -> [1, 4] -> 1 + 4 -> 5`***
-     */
-    open fun dotProduct(vectorCoreInternal: VectorCoreInternal<T>) = (hadamardProduct(vectorCoreInternal).AlgorithmHook as VectorAlgorithms<T>).sum()
-
-    // synonyms for dotProduct
-
-    /**
-     * see [dotProduct]
-     */
-    open fun scalarProduct(vectorCoreInternal: VectorCoreInternal<T>) = dotProduct(vectorCoreInternal)
-
-    /**
-     * see [dotProduct]
-     */
-    open infix fun `·`(vectorCoreInternal: VectorCoreInternal<T>) = scalarProduct(vectorCoreInternal)
-
+    val Algorithm = AlgorithmHook as VectorAlgorithms
+    operator fun plus(vectorCore: VectorCore) = Algorithm + vectorCore
 }
 
 typealias Vector = VectorCore
@@ -1212,40 +1047,9 @@ open class VectorSpaceCore: VectorCoreInternal<VectorCore> {
      */
     constructor(N: Int) : super(N)
     override fun clone() = VectorSpaceCore().also { it.addAll(this) }
-    override var AlgorithmHook: Any? = VectorAlgorithms(this)
-}
-
-// TODO: integrate with VectorBase somehow
-
-open class VectorSpaceBase: VectorSpaceCore {
-    // constructors
-    constructor() : super()
-    /**
-     * constructs an **N**-dimensional space vector
-     */
-    constructor(N: Int) : super(N)
-
-    // base operations
-    fun operation(vector: VectorSpace, action: (result: VectorCoreInternal<Number>, lhs: Number, rhs: Number) -> Unit): VectorSpace {
-        val v1 = VectorSpace()
-        val vA = clone()
-        val vB = vector.clone()
-        if (dimensions != vector.dimensions) {
-            vA.resize(if (dimensions > vector.dimensions) dimensions else vector.dimensions)
-            vB.resize(if (dimensions > vector.dimensions) dimensions else vector.dimensions)
-        }
-        vA.forEachIndex {
-            v1.addDimension((vA[it]!!.AlgorithmHook as VectorAlgorithms<Number>).elementWiseOperation(vB[it]!!, action).toVectorCore())
-        }
-        return v1
-    }
-    fun sum(): Number {
-        var sum: Number = 0.toByte()
-        forEachIndex {
-            sum = addition(sum, (get(it)?.AlgorithmHook as VectorAlgorithms<VectorCore>)?.sum() ?: 0)
-        }
-        return sum
-    }
+    override var AlgorithmHook: Any? = VectorSpaceAlgorithms<Number>(this)
+    val Algorithm = AlgorithmHook as VectorSpaceAlgorithms<Number>
+    operator fun plus(vectorSpaceCore: VectorSpaceCore) = Algorithm + vectorSpaceCore
 }
 
 /**
@@ -1260,10 +1064,6 @@ open class VectorSpaceBase: VectorSpaceCore {
  *  **Dimensions of a vector space**
  *
  * The number of coordinates required to specify any point within the space
- *
- * [19:43] <BigBrian> macroprep: a basis B of V is a set of linearly independent vectors of V such that *every* vector of V is a linear combination of vectors in B.
- *
- * [19:43] <BigBrian> notice that I said "a basis" and not "the basis"
  *
  * To qualify as a vector space,
  * the set ***`V`*** and the operations of addition and multiplication
@@ -1319,36 +1119,7 @@ open class VectorSpaceBase: VectorSpaceCore {
  *
  * : ***`(a + b)v = av + bv`***
  */
-open class VectorSpace: VectorSpaceBase {
-    constructor() : super()
-    constructor(dimension: Int) : super(dimension)
-
-    /**
-     * performs vector addition
-     */
-    operator fun plus(vector: VectorSpace): VectorSpace = operation(vector) { result, lhs, rhs ->
-        result.addDimension(addition(lhs, rhs))
-    }
-    /**
-     * takes an **input vector**, then multiplies **this vector** and the **input vector**
-     * and then returns the **sum** of the **resulting vector**
-     *
-     * example: ***`(1, 2) ⊗ (1, 2) -> (1*1, 2*2) -> (1, 4) -> 1 + 4 -> 5`***
-     */
-    fun scalarProduct(vector: VectorSpace) = operation(vector) { result, lhs, rhs ->
-        result.addDimension(multiplication(lhs, rhs))
-    }.sum()
-
-    /**
-     * see [scalarProduct]
-     */
-    fun dotProduct(vector: VectorSpace) = scalarProduct(vector)
-
-    /**
-     * see [scalarProduct]
-     */
-    infix fun `⊗`(vector: VectorSpace) = scalarProduct(vector)
-}
+typealias VectorSpace = VectorSpaceCore
 
 fun vec() {
     val v1 = Vector(3)
@@ -1365,16 +1136,21 @@ fun vec() {
     println("dot product between v1 and v2 = ${v1.Algorithm.dotProduct(v2)}")
     println("v1 scaled by 5 = ${v1.Algorithm.scale(5)}")
     println("linear combination: 5v1 + 7v2 = ${v1.Algorithm.scale(5) + v2.Algorithm.scale(7)}")
-    println(v1)
-    println(v2)
+    println("v1 = $v1")
+    println("v2 = $v2")
     val v3 = VectorSpace(2)
     v3[0] = v1
     v3[1] = v2
-    println(v1)
-    println(v2)
-    println(v3)
-    println("v3 + v3 = ${v3 + v3}")
-    println("v3 dot v3 = ${v3 `⊗` v3}")
+    println("v1 = $v1")
+    println("v2 = $v2")
+    println("v3 = $v3")
+    println("vector addition between v3 and v3 = ${v3 + v3}")
+    println("dot product between v3 and v3 = ${v3.Algorithm.dotProduct(v3)}")
+    println("v3 scaled by 5 = ${v3.Algorithm.scale(5)}")
+    println("linear combination: 5v3 + 7v3 = ${v3.Algorithm.scale(5) + v3.Algorithm.scale(7)}")
+    println("v1 = $v1")
+    println("v2 = $v2")
+    println("v3 = $v3")
 }
 
 fun main() {
