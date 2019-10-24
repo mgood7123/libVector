@@ -1,4 +1,6 @@
-import sample.VectorCore
+package sample.vector
+
+import sample.core.classes.forEachIndex
 
 open class VectorAlgorithms(var parent: VectorCore) {
     /**
@@ -29,8 +31,6 @@ open class VectorAlgorithms(var parent: VectorCore) {
      * @see elementWiseDivision
      */
     open fun elementWiseOperation(vectorCore: VectorCore, action: (result: VectorCore, lhs: Number, rhs: Number) -> Unit): VectorCore {
-        println("parent = $parent")
-        println("vectorCore = $vectorCore")
         val v1 = VectorCore()
         val vA = parent.clone()
         val vB = vectorCore.clone()
@@ -121,10 +121,7 @@ open class VectorAlgorithms(var parent: VectorCore) {
     /**
      * performs [vector addition][vectorAddition]
      */
-    open operator fun plus(vectorCore: VectorCore): VectorCore {
-        println("parent $parent plus vectorCore $vectorCore")
-        return vectorAddition(vectorCore)
-    }
+    open operator fun plus(vectorCore: VectorCore): VectorCore = vectorAddition(vectorCore)
     /**
      * performs [scalar multiplication][scalarMultiplication]
      */

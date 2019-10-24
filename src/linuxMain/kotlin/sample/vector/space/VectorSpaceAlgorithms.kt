@@ -1,6 +1,8 @@
-import sample.VectorCoreInternal
-import sample.VectorSpaceCore
-import sample.toVectorCore
+package sample.vector.space
+
+import sample.core.classes.forEachIndex
+import sample.vector.VectorCoreInternal
+import sample.vector.toVectorCore
 
 open class VectorSpaceAlgorithms<T>(val parent: VectorSpaceCore) {
     /**
@@ -32,7 +34,6 @@ open class VectorSpaceAlgorithms<T>(val parent: VectorSpaceCore) {
      */
     open fun elementWiseOperation(vectorSpaceCore: VectorSpaceCore, action: (result: VectorCoreInternal<Number>, lhs: Number, rhs: Number) -> Unit): VectorSpaceCore {
         val v1 = VectorSpaceCore()
-        v1.AlgorithmHook = vectorSpaceCore.AlgorithmHook
         val vA = parent.clone()
         val vB = vectorSpaceCore.clone()
         if (parent.dimensions != vectorSpaceCore.dimensions) {
@@ -161,7 +162,7 @@ open class VectorSpaceAlgorithms<T>(val parent: VectorSpaceCore) {
 
     /**
      * see [dotProduct]
-     */
+o     */
     open infix fun `·`(vectorSpaceCore: VectorSpaceCore) = scalarProduct(vectorSpaceCore)
 
 }
